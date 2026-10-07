@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>☁️ 귀여운 반도체 이온주입 공정 시뮬레이터</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+
+    body {
+      background: #e0f2fe; /* 산뜻한 하늘색 배경 */
+      color: #0c4a6e;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* 1. 첫 시작 화면 팝업 모달 */
+    .start-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(186, 230, 253, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    .start-card {
+      background: #ffffff;
+      border: 4px solid #38bdf8;
+      border-radius: 32px;
+      padding: 36px 32px;
+      max-width: 480px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(56, 189, 248, 0.3);
+      animation: popUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popUp {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .start-card h2 {
+      font-size: 1.7rem;
+      color: #0284c7;
+      margin-bottom: 12px;
+    }
+
+    .start-card p {
+      font-size: 0.98rem;
+      color: #0369a1;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .btn-start-game {
+      background: #38bdf8;
+      color: #ffffff;
+      border: none;
+      padding: 16px 28px;
+      border-radius: 24px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #0284c7;
+      transition: all 0.2s ease;
+    }
+
+    .btn-start-game:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+    }
+
+    .btn-start-game:active {
+      transform: translateY(4px);
+      box-shadow: none;
+    }
+
+    /* 전체 와이어프레임 틀 (하늘색 메인 게임 카드) */
+    .game-container {
+      width: 100%;
+      max-width: 1100px;
+      background: #ffffff;
+      border: 4px solid #38bdf8;
+      border-radius: 32px;
+      box-shadow: 0 16px 36px rgba(56, 189, 248, 0.25);
+      padding: 28px;
+    }
+
+    /* 상단 헤더 */
+    header {
+      text-align: center;
+      border-bottom: 3px dashed #bae6fd;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      color: #0284c7;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 1rem;
+      color: #0369a1;
+      font-weight: 500;
+    }
+
+    /* 메인 2단 레이아웃 (와이어프레임 구조 유지) */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 850px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* [좌측: 입력 및 조작 영역] */
+    .control-panel {
+      background: #f0f9ff;
+      border: 3px solid #bae6fd;
+      border-radius: 24px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-label {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0369a1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 1. 둥근 원소 선택 버튼 */
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-elem {
+      padding: 12px 8px;
+      border: 3px solid #bae6fd;
+      background: #ffffff;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0369a1;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 4px 0 #bae6fd;
+    }
+
+    .btn-elem:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 transparent;
+    }
+
+    .btn-elem.active-b {
+      border-color: #f43f5e;
+      background: #fff1f2;
+      color: #e11d48;
+      box-shadow: 0 4px 0 #fda4af;
+    }
+
+    .btn-elem.active-p {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      color: #0284c7;
+      box-shadow: 0 4px 0 #7dd3fc;
+    }
+
+    /* 2 & 3. 슬라이더 (막대와 점) */
+    .slider-box {
+      background: #ffffff;
+      border: 2px solid #bae6fd;
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0369a1;
+    }
+
+    .badge {
+      background: #38bdf8;
+      color: #ffffff;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background: #e0f2fe;
+      outline: none;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* 액션 버튼 */
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 5px;
+    }
+
+    .btn-action {
+      padding: 14px;
+      border: none;
+      border-radius: 20px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-launch {
+      background: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 5px 0 #0284c7;
+    }
+
+    .btn-launch:active {
+      transform: translateY(5px);
+      box-shadow: none;
+    }
+
+    .btn-reset {
+      background: #ffffff;
+      color: #0369a1;
+      border: 2px solid #bae6fd;
+      box-shadow: 0 4px 0 #bae6fd;
+    }
+
+    .btn-reset:active {
+      transform: translateY(4px);
+      box-shadow: none;
+    }
+
+    /* [우측: 시각화 및 그래프 영역] */
+    .vis-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .vis-card {
+      background: #ffffff;
+      border: 3px solid #bae6fd;
+      border-radius: 24px;
+      padding: 16px;
+    }
+
+    .vis-header {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0369a1;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 160px;
+      background: #0f172a;
+      border-radius: 16px;
+      display: block;
+    }
+
+    /* [하단: 결과 분석 및 교과 설명] */
+    .info-panel {
+      background: #f0fdf4;
+      border: 3px solid #86efac;
+      border-radius: 24px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .info-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #166534;
+    }
+
+    .info-desc {
+      font-size: 0.95rem;
+      color: #15803d;
+      line-height: 1.6;
+    }
+
+    .highlight {
+      background: #bbf7d0;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 첫 시작 화면 (모달 팝업) -->
+  <div class="start-overlay" id="startOverlay">
+    <div class="start-card">
+      <div style="font-size: 3rem; margin-bottom: 10px;">☁️🔬</div>
+      <h2>반도체 이온주입 시뮬레이터</h2>
+      <p>
+        반가워요! 붕소(B)와 인(P) 원소를 선택하고<br>
+        가속 에너지를 조절해 나만의 <strong>P/N형 반도체</strong>를 완성해 보세요!
+      </p>
+      <button class="btn-start-game" onclick="closeStartScreen()">🎮 공정 시뮬레이션 시작하기!</button>
+    </div>
+  </div>
+
+  <!-- 메인 게임 컨테이너 -->
+  <div class="game-container">
+    
+    <!-- 상단 헤더 -->
+    <header>
+      <h1>☁️ 반도체 이온주입(Ion Implantation) 시뮬레이터</h1>
+      <p>13족/15족 원소 선택과 가속 에너지를 조절해 P/N형 반도체를 완성해 보세요!</p>
+    </header>
+
+    <!-- 메인 2단 레이아웃 (와이어프레임 완벽 일치) -->
+    <div class="main-grid">
+
+      <!-- [좌측: 입력 및 조작 영역] -->
+      <section class="control-panel">
+        
+        <!-- 1. 원소 선택 -->
+        <div>
+          <div class="section-label">🧪 1. 주입 원소 선택 (도핑)</div>
+          <div class="btn-group" style="margin-top: 8px;">
+            <button class="btn-elem active-b" id="btn-b" onclick="selectElem('B')">🌸 붕소 (B)</button>
+            <button class="btn-elem" id="btn-p" onclick="selectElem('P')">⚡ 인 (P)</button>
+          </div>
+        </div>
+
+        <!-- 2. 가속 에너지 슬라이더 -->
+        <div>
+          <div class="section-label">⚡ 2. 가속 에너지 (Depth)</div>
+          <div class="slider-box" style="margin-top: 8px;">
+            <div class="slider-header">
+              <span>투과 깊이 조절</span>
+              <span class="badge" id="val-energy">50 keV</span>
+            </div>
+            <input type="range" id="slider-energy" min="10" max="100" value="50" oninput="updateVal()">
+          </div>
+        </div>
+
+        <!-- 3. 이온 농도 슬라이더 -->
+        <div>
+          <div class="section-label">💧 3. 이온 농도 (Dose)</div>
+          <div class="slider-box" style="margin-top: 8px;">
+            <div class="slider-header">
+              <span>주입 입자 수</span>
+              <span class="badge" id="val-dose">5 Lvl</span>
+            </div>
+            <input type="range" id="slider-dose" min="1" max="10" value="5" oninput="updateVal()">
+          </div>
+        </div>
+
+        <!-- 실행/리셋 버튼 -->
+        <div class="action-group">
+          <button class="btn-action btn-launch" onclick="launchIon()">🚀 이온주입 빔 발사!</button>
+          <button class="btn-action btn-reset" onclick="resetAll()">🔄 초기화</button>
+        </div>
+
+      </section>
+
+      <!-- [우측: 시각화 및 그래프 영역] -->
+      <section class="vis-panel">
+        
+        <!-- 상단: 웨이퍼 미시 단면 애니메이션 (글씨 지움) -->
+        <div class="vis-card">
+          <div class="vis-header">
+            <span>🔬 웨이퍼 미시 단면 (실리콘 격자)</span>
+          </div>
+          <canvas id="waferCanvas"></canvas>
+        </div>
+
+        <!-- 하단: 깊이별 이온 분포 그래프 (글씨 지움) -->
+        <div class="vis-card">
+          <div class="vis-header">
+            <span>📊 깊이별 이온 분포 (가우스 곡선)</span>
+          </div>
+          <canvas id="graphCanvas"></canvas>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- [하단: 결과 분석 및 교과 설명] -->
+    <section class="info-panel">
+      <div class="info-title" id="info-header">📌 탐구 결과 및 교과 원리 분석</div>
+      <div class="info-desc" id="info-content">
+        로딩 중...
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    let currentElem = 'B';
+    let energy = 50;
+    let dose = 5;
+    let particles = [];
+    let isAnimating = false;
+
+    const waferCanvas = document.getElementById('waferCanvas');
+    const wCtx = waferCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const gCtx = graphCanvas.getContext('2d');
+
+    // 첫 시작 화면 닫기
+    function closeStartScreen() {
+      const overlay = document.getElementById('startOverlay');
+      overlay.style.opacity = '0';
+      overlay.style.visibility = 'hidden';
+    }
+
+    function resize() {
+      waferCanvas.width = waferCanvas.clientWidth;
+      waferCanvas.height = waferCanvas.clientHeight;
+      graphCanvas.width = graphCanvas.clientWidth;
+      graphCanvas.height = graphCanvas.clientHeight;
+      drawAll();
+    }
+
+    function selectElem(type) {
+      currentElem = type;
+      document.getElementById('btn-b').className = type === 'B' ? 'btn-elem active-b' : 'btn-elem';
+      document.getElementById('btn-p').className = type === 'P' ? 'btn-elem active-p' : 'btn-elem';
+      updateVal();
+    }
+
+    function updateVal() {
+      energy = parseInt(document.getElementById('slider-energy').value);
+      dose = parseInt(document.getElementById('slider-dose').value);
+
+      document.getElementById('val-energy').innerText = energy + ' keV';
+      document.getElementById('val-dose').innerText = dose + ' Lvl';
+
+      updateText();
+      drawAll();
+    }
+
+    function updateText() {
+      const header = document.getElementById('info-header');
+      const content = document.getElementById('info-content');
+
+      if (currentElem === 'B') {
+        header.innerText = '🌸 13족 붕소(B) 주입 결과 ➔ [P형 반도체] 완성!';
+        content.innerHTML = `
+          • <strong>화학 결합 원리:</strong> 13족 붕소(원자가 전자 3개)를 주입하여 전자가 1개 모자란 <span class="highlight">양공(Hole, +)</span>이 형성되었습니다.<br>
+          • <strong>물리적 침투:</strong> 가속 에너지(<strong>${energy} keV</strong>) 설정에 따라 이온이 웨이퍼 내부 적정 깊이에 통통 박혔습니다.
+        `;
+      } else {
+        header.innerText = '⚡ 15족 인(P) 주입 결과 ➔ [N형 반도체] 완성!';
+        content.innerHTML = `
+          • <strong>화학 결합 원리:</strong> 15족 인(원자가 전자 5개)을 주입하여 공유 결합 후 남는 <span class="highlight">자유전자(Electron, -)</span>가 형성되었습니다.<br>
+          • <strong>물리적 침투:</strong> 가속 에너지(<strong>${energy} keV</strong>) 설정에 따라 이온이 웨이퍼 내부 적정 깊이에 통통 박혔습니다.
+        `;
+      }
+    }
+
+    function launchIon() {
+      particles = [];
+      const count = dose * 15;
+      const targetY = (energy / 100) * (waferCanvas.height - 40) + 20;
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * (waferCanvas.width - 30) + 15,
+          y: -10 - Math.random() * 50,
+          targetY: targetY + (Math.random() - 0.5) * 25,
+          speed: 3 + Math.random() * 4,
+          color: currentElem === 'B' ? '#f43f5e' : '#0284c7'
+        });
+      }
+
+      if (!isAnimating) {
+        isAnimating = true;
+        animate();
+      }
+    }
+
+    function animate() {
+      let activeCount = 0;
+      wCtx.clearRect(0, 0, waferCanvas.width, waferCanvas.height);
+      drawWaferGrid();
+
+      particles.forEach(p => {
+        if (p.y < p.targetY) {
+          p.y += p.speed;
+          activeCount++;
+        }
+        wCtx.fillStyle = p.color;
+        wCtx.beginPath();
+        wCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        wCtx.fill();
+        wCtx.strokeStyle = '#ffffff';
+        wCtx.lineWidth = 1.5;
+        wCtx.stroke();
+      });
+
+      if (activeCount > 0) {
+        requestAnimationFrame(animate);
+      } else {
+        isAnimating = false;
+      }
+    }
+
+    function resetAll() {
+      particles = [];
+      document.getElementById('slider-energy').value = 50;
+      document.getElementById('slider-dose').value = 5;
+      selectElem('B');
+    }
+
+    function drawAll() {
+      if (!isAnimating) {
+        wCtx.clearRect(0, 0, waferCanvas.width, waferCanvas.height);
+        drawWaferGrid();
+        particles.forEach(p => {
+          wCtx.fillStyle = p.color;
+          wCtx.beginPath();
+          wCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+          wCtx.fill();
+          wCtx.strokeStyle = '#ffffff';
+          wCtx.lineWidth = 1.5;
+          wCtx.stroke();
+        });
+      }
+      drawGraph();
+    }
+
+    function drawWaferGrid() {
+      wCtx.strokeStyle = '#334155';
+      wCtx.lineWidth = 1;
+      const size = 24;
+      for (let x = 0; x < waferCanvas.width; x += size) {
+        for (let y = 0; y < waferCanvas.height; y += size) {
+          wCtx.strokeRect(x, y, size, size);
+          wCtx.fillStyle = '#38bdf8';
+          wCtx.beginPath();
+          wCtx.arc(x + size / 2, y + size / 2, 2.5, 0, Math.PI * 2);
+          wCtx.fill();
+        }
+      }
+    }
+
+    function drawGraph() {
+      gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+      const w = graphCanvas.width;
+      const h = graphCanvas.height;
+      const pad = 30;
+
+      // 축
+      gCtx.strokeStyle = '#38bdf8';
+      gCtx.lineWidth = 2;
+      gCtx.beginPath();
+      gCtx.moveTo(pad, 10);
+      gCtx.lineTo(pad, h - pad);
+      gCtx.lineTo(w - 10, h - pad);
+      gCtx.stroke();
+
+      // 라벨
+      gCtx.fillStyle = '#0284c7';
+      gCtx.font = 'bold 11px sans-serif';
+      gCtx.fillText('농도', 5, 15);
+      gCtx.fillText('깊이(Depth)', w - 65, h - 10);
+
+      // 가우스 곡선
+      const mean = pad + (energy / 100) * (w - pad - 40);
+      const peak = (dose / 10) * (h - pad - 20);
+      const std = 22;
+
+      gCtx.strokeStyle = currentElem === 'B' ? '#f43f5e' : '#0284c7';
+      gCtx.lineWidth = 3.5;
+      gCtx.beginPath();
+
+      for (let x = pad; x < w - 10; x++) {
+        const y = (h - pad) - peak * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+        if (x === pad) gCtx.moveTo(x, y);
+        else gCtx.lineTo(x, y);
+      }
+      gCtx.stroke();
+    }
+
+    window.addEventListener('resize', resize);
+    window.onload = () => {
+      resize();
+      updateVal();
+    };
+  </script>
+</body>
+</html>
